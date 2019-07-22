@@ -1,27 +1,26 @@
-# Draft
-
 # Redux-Saga Pattern
 
 시작하기에 앞서 redux-saga에 대한 거의 모든 정보는 [공식문서](https://redux-saga.js.org/) 에서 얻을 수 있다.
 
 ## Prerequisite
 
-redux-saga의 기본 [이펙트](https://redux-saga.js.org/docs/basics/DeclarativeEffects.html)를 사용 가능하며, sync/async, block/non-block 대하여 숙지한 자를 대상으로 한다.
+redux-saga의 기본 [이펙트](https://redux-saga.js.org/docs/basics/DeclarativeEffects.html)를 사용 가능하며, sync/async, blocking/non-blocking 대하여 숙지한 자를 대상으로 한다.
 
 ## 글 전체를 관통하는 원칙
 
 - 일의 처리는 최대한 뒤로 미룬다.
 - 재활용 가능한 코드를 작성한다.
-- 인자가 적은 함수를 작성한다.
+- 인자가 적은 함수가 인자가 많은 함수 보다 더 좋은 함수 이다.
 - 함수의 합성에서 에러처리 룰은 KLEISLI COMPOSITION에 근거한다.
 
-## Redux-Saga의 역할
+## Redux/Redux-Saga의 역할
 
-redux-saga의 역할은 react/redux/redux-saga 의 스텍을 사용하는 어플리케이션에서 middle-ware를 담당한다. redux 3가지 원칙 중 하나인 ***Changes are made with pure functions*** 에 근거하여 redux는 순수함수로 state의 변화를 만드는 역할을 한다. 그리고 사가는 redux가 맡고 있지 않은 side-effect 관리를 담당한다.
+redux는 3가지 원칙 중 하나인 ***Changes are made with pure functions*** 에 근거하여 redux는 순수함수로 state의 변화를 만드는 역할을 한다. redux-saga의 역할은 react/redux/redux-saga 의 스텍을 사용하는 어플리케이션에서 middle-ware를 담당, redux가 맡고 있지 않은 side-effect 관리한다.
 
 간단한 예를 들면
+
 ```
-button click -> api request -> api pending -> api resolve -> 상태 변경
+button click --> api request --> api pending --> api resolve --> 상태 변경
 ```
 
 이 예에서 사가는 api request 이후에서 부터 api resolve 까지의 역할을 맡는다.
@@ -38,10 +37,9 @@ redux/redux-saga의 관심사는 하나의 task 안에서 나뉘며 그 보다 �
   - saga.js
 ```
 
- 를 작성한다. 참고로 실제 프로젝트에서 redux관련 파일 작성은 [redux ducks pattern](https://github.com/erikras/ducks-modular-redux)을 사용했다.
+ 와 같이 작성한다. 참고로 실제 프로젝트에서 redux관련 파일 작성은 [redux ducks pattern](https://github.com/erikras/ducks-modular-redux)을 사용했다.
 
 ### 동기/비동기 이펙트(effect)로 만드는 패턴
-사가에서 제공하는 기능들을 이펙트라 부르며 이 중에서 가장 많이 쓰이는 몇개의 이펙트를 설명하고 각 이펙트들의 특징에대해서 알아보겠다.
 
 ## take/call pattern
 
@@ -58,7 +56,7 @@ function* watchSaga() {
 }
 ```
 
-사가의 가장 기본 패턴이라고 생각하는 코드이다. watch pattern이라고 볼 수 있는데 특정 액션이 발생하면 해당 액션 타입 을 **take** 하고 **call**로 event handler 역할을 하는 saga를 부른다. **call**로 다른 제네레이터 함수를 부르면 불린 제네레이터, 즉 서브루틴은 그 루틴이 모두 끝나야 제네레이터의 next를 호출 가능하다.
+사가의 가장 기본 패턴이라고 생각하는 코드이다. watch pattern이라고 볼 수 있는데 특정 액션이 발생하면 해당 액션 타입 을 **take** 하고 **call**로 event handler 역할을 하는 saga를 부른다. **call**로 다른 제네레이터 함수를 부르면 불린 제네레이터, 즉 서브루틴은 그 루틴이 모두 끝나야 부모 제네레이터는 next를 호출 가능하다.
 
 ***이 패턴을 사용해야 할 때와 사용하지 말아야 할 때:***
 
@@ -90,13 +88,14 @@ function* watchSaga() {
 }
 ```
 
-이 패턴은 `take/call pattern`을 조금 변경하여 모든 이벤트를 watch 하고 싶을 때 만들법한 코드이다. 실제 프로젝트에서 이 패던은 사용하고 있지 않지만 이처럼 사가를 만들었을 때 발생하는 실수에 대해서 설명해 보겠다.
+이 패턴은 `take/call pattern`을 조금 변경하여 모든 이벤트를 watch 하고 싶을 때 만들법한 코드이다. 실제 프로젝트에서 이 패턴은 사용하고 있지 않지만 이처럼 사가를 만들었을 때 발생하는 실수에 대해서 설명해 보겠다.
 
-`take/call pattern` 과 다르게 처음 work1을 비동기 이펙트 fork로 호출하고 있다. while 문 안에 ***take*** 이후의 모든 코드가 비동기 라면 해당 패턴은 원하는 대로 동작하겠지만 fork이후 block을 발생시키는 어떠한 코드가 있더라도 연속된 이벤트 호출을 무시할 수 있다. 그 이유는 watchSaga가 이벤트를 받을 수 있는 상태는 generator 함수의 next 호출의 단계가 `yield take`와 맞아 떨어질 때 뿐이기 때문이다.
+`take/call pattern` 과 다르게 처음 work1을 비동기 이펙트 fork로 호출하고 있다. while 문 안에 ***take*** 이후의 모든 코드가 비동기 라면 해당 패턴은 원하는 대로 동작하겠지만 fork이후 block을 발생시키는 어떠한 코드가 있더라도 연속된 이벤트 호출을 무시할 수 있다.
+ 그 이유는 watchSaga가 이벤트를 받을 수 있는 상태는 generator 함수의 next 호출의 단계가 `yield take`와 맞아 떨어질 때 뿐이기 때문이다.
 
 즉, 이벤트가 발생해도 `yield call` 의 단계에 있다면 해당 이벤트는 무시 될 것이다. 따라서 위 패턴으로 모든 이벤트를 watch하기 보다 다음에 소개할 패턴으로 작성할 것을 권장한다.
 
-보다 자세한 설명은 공식 문서의 [Non-blocking calls](https://redux-saga.js.org/docs/advanced/NonBlockingCalls.html)에서 확인 가능하다.
+이에 대한 자세한 설명은 공식 문서의 [Non-blocking calls](https://redux-saga.js.org/docs/advanced/NonBlockingCalls.html)에서 확인 가능하다.
 
 ***이 패턴은 가급적 사용하지 말아야 할 패턴이다***
 
@@ -217,6 +216,14 @@ function* flowProfile(actions) {
 
 ### 다수의 work saga를 병렬처리 하는 flow
 
+flow saga를 작성하다 보면
+
+- 여러개의 work를 병렬 처리 하고 싶다.
+- 하나의 work라도 실패하면 모든 work를 취소하고 싶다.
+- 여러개의 work들이 모두 성공/실패로 완료 되었는지 알고 싶다.
+
+의 조건을 실행하는 기능이 필요하다.
+
 Promise.all의 사용 처럼 여러개의 task를 비동기로 요청하여 결과만 기다리게 하는 flow를 작성해보자.
 
 ```javascript
@@ -258,11 +265,52 @@ function* flowSaga(action) {
 }
 ```
 
-우선 원하는 workSaga 들을 fork를 활용해 비동기로 호출하고 이를 처리할 동기코드를 ***executeParallelTasks*** 처럼 작성한다. 이를 통해 여러개의 병렬처리 중 하나라도 실패했을 때 처리중인 task를 모두 취소 및 중단 가능하다.
+우선 원하는 workSaga 들을 fork를 활용해 비동기로 호출하고 이를 처리할 동기코드를 ***executeParallelTasks*** 처럼 작성한다. 이를 통해 여러개의 병렬처리 중 하나라도 실패했을 때 처리중인 task를 모두 취소 및 중단 가능하다. 또한 여러개의 work들이 모두 성공/실패로 완료 되었는지도 알 수 있다.
 
-## redux-action request의 payload의 인자 개수
+## 결론
 
+지금까지 몇가지의 saga 작성법을 알아보았다. 몇가지 되지 않지만 ***동일한 기준*** 으로 프로젝트의 모든 saga를 작성할 수 있었다. 프로젝트를 처음 시작할 때는 너무 많은 보일러 플레이트를 작성하는 것이 아닌가 하는 걱정이 있었다. 기존에는 react component의 라이프 사이클을 이용해서 api 콜과 후속 처리를 했는데 이것 보다 작업이 느리다고 생각했다. 하지만 재활용 가능한 더 많은 코드를 만들고, 다른 작업자도 따를 수 있는 동일한 원칙을 만들며, react/redux/redux-saga의 관심사를 분리해서 더 견고한 어플리케이션을 만들고 싶다는 욕심에 계속 작업을 이어갔다. 지금에 와서는 전에 작성한 많은 사가를 이용할 수 있어서 편하고 잘했다는 생각이 든다.
 
-#### reference
+## 번외: Saga를 쉽게 재활용 하기위한 redux action의 payload 작성법
+
+> 어떻게 redux action의 payload를 작성해야 미리 작성해둔 saga함수를 쉽게 재활용 할 수 있을까?
+
+일정 기간의 숙박업장을 요청할 때 requestStays 액션을 호출 한다고 생각해보자.
+
+쉽게 생각할 수 있는것은 사용자로 부터 ***startDate, endDate*** 를 받아서 requestStays(startDate, endDate)를 요청하고 이를 사가에서 받아서 requestStaysApi(startDate, endDate)를 호출하는 방식을 예로 들 수 있다.
+
+그렇다면 다른 화면에서도 requestStays를 요청하고 싶다면 어떻게 해야할까? 그리고 사용자로 부터 ***startDate, endDate*** 를 받을 수 없다면 어떻게 해야할까? 아마도 이전에 작성한 flow saga안에서 startDate, endDate를 redux-store에 저장하는 로직을 넣어야 할 것이다.
+
+그러면
+
+```
+requestStays(startDate, endDate)
+-> save(startDate, endDate)
+-> requestStaysApi(startDate || storesStartDate, endDate || storesEndDate)
+```
+
+와 같은 플로우가 될 것이다.
+
+이처럼 request action을 취하면 재활용하기에 많은 어려움이 있다.
+
+- 매번 요청에 필요한 안 써도 될지 모를 (startDate, endDate) 와 같은 인자가 필요하다.
+- saga에서 api를 요청할 때 참고해야할 인자들이 request의 시작에서 보낸 인자인지 redux-store에 있는 인자인지 기준을 알기 어렵다.
+
+이를 해결하여 requestStays를 만들어 보면 우선
+
+```
+save(startDate, endDate)
+-> requestStays()
+-> requestStaysApi(storesStartDate, storesEndDate)
+```
+
+(requestStays -> requestStaysApi) 이 단계가 saga가 책임질 단계이기때문에 이부분만 flowRequest = (requestStays -> requestStaysApi) 라고 정의 하고
+필요할때 flowRequest() 만 호출 가능하다. 또한 찹조해야할 인자가 redux-store 안에 있어서 참조 대상이 명확하고 단순하다.
+
+결론을 내보자면 가능한 redux-action의 payload에 적은 인자를 넣으면 더 사용하기 쉽고 단순한 Saga를 작성할 수 있다.
+
+---
+
+### reference
 
 - https://www.freecodecamp.org/news/redux-saga-common-patterns-48437892e11c/
