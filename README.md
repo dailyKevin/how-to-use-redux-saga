@@ -260,4 +260,6 @@ function* flowSaga(action) {
 
 우선 원하는 workSaga 들을 fork를 활용해 비동기로 호출하고 이를 처리할 동기코드를 ***executeParallelTasks*** 처럼 작성한다. 이를 통해 여러개의 병렬처리 중 하나라도 실패했을 때 처리중인 task를 모두 취소 및 중단 가능하다.
 
+#### reference
+
 - https://www.freecodecamp.org/news/redux-saga-common-patterns-48437892e11c/
